@@ -1,0 +1,116 @@
+.section-container {
+    padding: 6rem 5%;
+    display: flex;
+    justify-content: center;
+}
+
+.section-content {
+    max-width: 1000px;
+    width: 100%;
+    text-align: center;
+}
+
+.section-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.section-subtitle {
+    font-size: 1.2rem;
+    color: #888;
+    max-width: 600px;
+    margin: 0 auto 4rem auto;
+}
+
+.text-danger {
+    color: #ff4757;
+}
+
+.text-accent {
+    color: var(--accent-color);
+}
+
+/* Problem Section Specifics */
+.problem-bg {
+    background: #111;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: left;
+    transition: transform 0.3s;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.icon-box {
+    margin-bottom: 1.5rem;
+    padding: 12px;
+    border-radius: 12px;
+    width: fit-content;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-box.danger {
+    background: rgba(255, 71, 87, 0.1);
+    color: #ff4757;
+}
+
+.feature-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    font-size: 1rem;
+    color: #aaa;
+}
+
+/* Solution Section Specifics */
+.solution-bg {
+    background: linear-gradient(to bottom, #0a0a0a, #1a0b2e);
+}
+
+.features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    align-items: center;
+}
+
+.feature-row {
+    background: rgba(0, 243, 255, 0.05);
+    border: 1px solid rgba(0, 243, 255, 0.1);
+    padding: 3rem;
+    border-radius: 30px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.feature-text h3 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+}
+
+.inline-icon {
+    color: var(--accent-color);
+}
