@@ -1,61 +1,138 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, FlatList } from 'react-native';
-import { usePlaylist } from '../context/PlaylistContext';
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../lib/supabase';
+import { Playlist } from '../types/supabase';
+import PlaylistManager from './PlaylistManager';
 
 export default function ParentDashboard() {
-    const [url, setUrl] = useState('');
-    const { playlist, addToPlaylist, removeFromPlaylist } = usePlaylist();
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
+    const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
 
-    const handleAddVideo = () => {
-        // Basic YouTube URL Regex
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
+    useEffect(() => {
+        fetchPlaylists();
+    }, []);
 
-        if (match && match[2].length === 11) {
-            const videoId = match[2];
-            if (playlist.includes(videoId)) {
-                Alert.alert("Info", "Video already in playlist");
-                return;
-            }
-            addToPlaylist(videoId);
-            setUrl('');
-            Alert.alert('Success', 'Video added to playlist!');
-        } else {
-            Alert.alert('Error', 'Invalid YouTube URL');
+    const fetchPlaylists = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('playlists')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setPlaylists(data || []);
+        } catch (error: any) {
+            Alert.alert('Error fetching playlists', error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
+    const handleCreatePlaylist = async () => {
+        if (!newPlaylistTitle.trim()) return;
+
+        try {
+            // For MVP, we need a parent_id. 
+            // If user is not logged in, this will fail if RLS enforces authentication.
+            // For now, let's check if we have a session.
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                Alert.alert("Authentication Required", "Please sign in to create playlists.");
+                // Ensure we have a way to sign in - for now just alert.
+                return;
+            }
+
+            const { error } = await supabase
+                .from('playlists')
+                .insert([
+                    {
+                        title: newPlaylistTitle,
+                        parent_id: session.user.id
+                    }
+                ]);
+
+            if (error) throw error;
+
+            setNewPlaylistTitle('');
+            setIsCreating(false);
+            fetchPlaylists();
+            Alert.alert('Success', 'Playlist created!');
+        } catch (error: any) {
+            Alert.alert('Error creating playlist', error.message);
+        }
+    };
+
+    // Placeholder for when we click a playlist to edit it
+    const handlePlaylistPress = (playlistId: string) => {
+        setSelectedPlaylistId(playlistId);
+    };
+
+    if (selectedPlaylistId) {
+        return (
+            <PlaylistManager
+                playlistId={selectedPlaylistId}
+                onBack={() => {
+                    setSelectedPlaylistId(null);
+                    fetchPlaylists();
+                }}
+            />
+        );
+    }
+
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Parent Dashboard</Text>
-
-            <View style={styles.inputContainer}>
-                <Text style={styles.label}>Add YouTube Video URL:</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="https://youtube.com/watch?v=..."
-                    value={url}
-                    onChangeText={setUrl}
-                    autoCapitalize="none"
-                />
-                <TouchableOpacity style={styles.addButton} onPress={handleAddVideo}>
-                    <Text style={styles.buttonText}>Add to Playlist</Text>
+            <View style={styles.headerRow}>
+                <Text style={styles.header}>Your Playlists</Text>
+                <TouchableOpacity style={styles.createButton} onPress={() => setIsCreating(true)}>
+                    <Text style={styles.createButtonText}>+ New</Text>
                 </TouchableOpacity>
             </View>
 
-            <Text style={styles.subHeader}>Current Playlist ({playlist.length})</Text>
-            <FlatList
-                data={playlist}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                    <View style={styles.videoItem}>
-                        <Text style={{ flex: 1 }}>ID: {item}</Text>
-                        <TouchableOpacity onPress={() => removeFromPlaylist(item)}>
-                            <Text style={{ color: 'red' }}>Remove</Text>
+            {loading ? (
+                <Text>Loading...</Text>
+            ) : (
+                <FlatList
+                    data={playlists}
+                    keyExtractor={(item) => item.id}
+                    ListEmptyComponent={<Text style={styles.emptyText}>No playlists yet. Create one!</Text>}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.playlistItem}
+                            onPress={() => handlePlaylistPress(item.id)}
+                        >
+                            <Text style={styles.playlistTitle}>{item.title}</Text>
+                            <Text style={styles.playlistDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
                         </TouchableOpacity>
+                    )}
+                />
+            )}
+
+            <Modal visible={isCreating} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Create New Playlist</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Playlist Name (e.g. Science Fun)"
+                            value={newPlaylistTitle}
+                            onChangeText={setNewPlaylistTitle}
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity onPress={() => setIsCreating(false)} style={styles.cancelButton}>
+                                <Text style={styles.buttonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleCreatePlaylist} style={styles.saveButton}>
+                                <Text style={styles.buttonText}>Create</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                )}
-            />
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -64,47 +141,99 @@ const styles = StyleSheet.create({
     container: {
         padding: 20,
         flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
     },
     header: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 20,
     },
-    inputContainer: {
-        marginBottom: 30,
+    createButton: {
+        backgroundColor: '#007AFF',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
     },
-    label: {
-        fontSize: 16,
-        marginBottom: 8,
+    createButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+    emptyText: {
+        textAlign: 'center',
+        marginTop: 50,
+        color: '#888',
+    },
+    playlistItem: {
+        backgroundColor: 'white',
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    playlistTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    playlistDate: {
+        color: '#666',
+        fontSize: 12,
+        marginTop: 4,
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 15,
+        padding: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        textAlign: 'center',
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: '#ddd',
         padding: 12,
         borderRadius: 8,
-        marginBottom: 10,
+        marginBottom: 20,
         backgroundColor: '#f9f9f9',
     },
-    addButton: {
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    cancelButton: {
+        padding: 12,
+        flex: 1,
+        marginRight: 10,
+        alignItems: 'center',
+    },
+    saveButton: {
         backgroundColor: '#007AFF',
         padding: 12,
         borderRadius: 8,
+        flex: 1,
+        marginLeft: 10,
         alignItems: 'center',
     },
     buttonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    subHeader: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    videoItem: {
-        padding: 10,
-        backgroundColor: '#eee',
-        marginBottom: 5,
-        borderRadius: 5,
-    },
+        fontWeight: '600',
+        color: 'black', // Default override for white bg buttons, but handled for saveButton if needed
+    }
 });
