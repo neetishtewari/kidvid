@@ -6,11 +6,14 @@ import YoutubePlayer from 'react-native-youtube-iframe';
 import { supabase } from '../lib/supabase';
 import { Video } from '../types/supabase';
 
-const { height } = Dimensions.get('window');
+const { height: windowHeight, width: windowWidth } = Dimensions.get('window');
 
 export default function VideoFeed() {
     const [videos, setVideos] = useState<Video[]>([]);
     const [playingId, setPlayingId] = useState<string | null>(null);
+    // Initialize with window height as a fallback
+    const [containerHeight, setContainerHeight] = useState(windowHeight);
+
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
@@ -20,8 +23,6 @@ export default function VideoFeed() {
 
     const fetchVideos = async () => {
         try {
-            // For MVP, just fetch all videos. 
-            // In real app, we would fetch videos for the specific authenticated child or active playlist.
             const { data, error } = await supabase
                 .from('videos')
                 .select('*')
@@ -38,9 +39,8 @@ export default function VideoFeed() {
         if (viewableItems.length > 0) {
             const visibleItem = viewableItems[0];
             if (visibleItem.item) {
-                // The item is the full Video object now, but we only need the youtube_id or check ID
                 const video = visibleItem.item as Video;
-                setPlayingId(video.id); // Track by internal ID
+                setPlayingId(video.id);
             }
         }
     }, []);
@@ -48,21 +48,19 @@ export default function VideoFeed() {
     const renderItem = ({ item }: { item: Video }) => {
         const isPlaying = item.id === playingId;
 
-        // Calculate custom height to account for navbar/safe area if needed, 
-        // but for full screen feed we usually want full height.
-        // const itemHeight = height - insets.top - insets.bottom;
-
         return (
-            <View style={[styles.videoContainer, { height: height }]}>
-                <View style={styles.playerWrapper}>
+            <View style={[styles.videoContainer, { height: containerHeight }]}>
+                {/* Center the player in the container */}
+                <View style={[styles.playerWrapper, { height: containerHeight, justifyContent: 'center' }]}>
                     <YoutubePlayer
                         height={300}
+                        width={windowWidth}
                         play={isPlaying}
                         videoId={item.youtube_id}
-                        onChangeState={(state: string) => {
-                            if (state === 'ended') {
-                                // Logic to scroll to next?
-                            }
+                        initialPlayerParams={{
+                            controls: false,
+                            modestbranding: true,
+                            rel: false,
                         }}
                     />
                     <View style={styles.metaContainer}>
@@ -84,11 +82,14 @@ export default function VideoFeed() {
                     <Text style={{ color: '#007AFF' }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
-        )
+        );
     }
 
     return (
-        <View style={styles.container}>
+        <View
+            style={styles.container}
+            onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
+        >
             <FlatList
                 data={videos}
                 renderItem={renderItem}
@@ -101,12 +102,16 @@ export default function VideoFeed() {
                     itemVisiblePercentThreshold: 80
                 }}
                 contentContainerStyle={{ backgroundColor: 'black' }}
+                removeClippedSubviews={true}
+                windowSize={3}
+                initialNumToRender={1}
+                maxToRenderPerBatch={1}
             />
 
             {/* Hidden Exit Button (Top Right) */}
             <TouchableOpacity
                 style={[styles.exitButton, { top: insets.top + 10 }]}
-                onPress={() => router.replace('/')}
+                onPress={() => router.back()}
             >
                 <Text style={{ color: 'white', opacity: 0.5 }}>Exit</Text>
             </TouchableOpacity>
