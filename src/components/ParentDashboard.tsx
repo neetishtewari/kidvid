@@ -1,11 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Playlist } from '../types/supabase';
 import PlaylistManager from './PlaylistManager';
 
 export default function ParentDashboard() {
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [likedVideos, setLikedVideos] = useState<any[]>([]); // Using any for join result, or define type
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
@@ -13,6 +15,7 @@ export default function ParentDashboard() {
 
     useEffect(() => {
         fetchPlaylists();
+        fetchLikedVideos();
     }, []);
 
     const fetchPlaylists = async () => {
@@ -32,18 +35,39 @@ export default function ParentDashboard() {
         }
     };
 
+    const fetchLikedVideos = async () => {
+        try {
+            // Join likes with videos to get title/details
+            // We select videos(*), and we will get an array of like objects { videos: { ... } }
+            const { data, error } = await supabase
+                .from('likes')
+                .select('*, videos(*)')
+                .order('created_at', { ascending: false })
+                .limit(10); // Show top 10 recent likes
+
+            if (error) throw error;
+
+            // Transform data to extract video details
+            // Supabase returns { ..., videos: { id: ..., title: ... } }
+            // Note: videos is singular object because video_id is FK
+            const videos = data?.map((like: any) => like.videos).filter(Boolean) || [];
+
+            // Remove duplicates if multiple likes on same video (though DB constraint might effectively prevent this if we clean up, but for now we just show recent)
+            // Ideally we'd group by video_id, but for MVP this is fine.
+            setLikedVideos(videos);
+        } catch (error) {
+            console.log('Error fetching liked videos', error);
+        }
+    };
+
     const handleCreatePlaylist = async () => {
         if (!newPlaylistTitle.trim()) return;
 
         try {
-            // For MVP, we need a parent_id. 
-            // If user is not logged in, this will fail if RLS enforces authentication.
-            // For now, let's check if we have a session.
             const { data: { session } } = await supabase.auth.getSession();
 
             if (!session) {
                 Alert.alert("Authentication Required", "Please sign in to create playlists.");
-                // Ensure we have a way to sign in - for now just alert.
                 return;
             }
 
@@ -67,7 +91,6 @@ export default function ParentDashboard() {
         }
     };
 
-    // Placeholder for when we click a playlist to edit it
     const handlePlaylistPress = (playlistId: string) => {
         setSelectedPlaylistId(playlistId);
     };
@@ -79,6 +102,7 @@ export default function ParentDashboard() {
                 onBack={() => {
                     setSelectedPlaylistId(null);
                     fetchPlaylists();
+                    fetchLikedVideos();
                 }}
             />
         );
@@ -87,30 +111,63 @@ export default function ParentDashboard() {
     return (
         <View style={styles.container}>
             <View style={styles.headerRow}>
-                <Text style={styles.header}>Your Playlists</Text>
+                <Text style={styles.header}>Dashboard</Text>
                 <TouchableOpacity style={styles.createButton} onPress={() => setIsCreating(true)}>
-                    <Text style={styles.createButtonText}>+ New</Text>
+                    <Text style={styles.createButtonText}>+ New Playlist</Text>
                 </TouchableOpacity>
             </View>
 
-            {loading ? (
-                <Text>Loading...</Text>
-            ) : (
-                <FlatList
-                    data={playlists}
-                    keyExtractor={(item) => item.id}
-                    ListEmptyComponent={<Text style={styles.emptyText}>No playlists yet. Create one!</Text>}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={styles.playlistItem}
-                            onPress={() => handlePlaylistPress(item.id)}
-                        >
-                            <Text style={styles.playlistTitle}>{item.title}</Text>
-                            <Text style={styles.playlistDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
-                        </TouchableOpacity>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Liked Videos Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>❤️ Kids' Favorites</Text>
+                    {likedVideos.length === 0 ? (
+                        <Text style={styles.emptySubText}>No liked videos yet.</Text>
+                    ) : (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                            {likedVideos.map((video, index) => (
+                                <View key={`${video.id}-${index}`} style={styles.likedCard}>
+                                    <View style={styles.videoPreview}>
+                                        <Ionicons name="play-circle-outline" size={32} color="#666" />
+                                    </View>
+                                    <Text style={styles.likedTitle} numberOfLines={2}>{video.title || "Untitled"}</Text>
+                                </View>
+                            ))}
+                        </ScrollView>
                     )}
-                />
-            )}
+                </View>
+
+                {/* Playlists Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>📂 Your Playlists</Text>
+                    {loading ? (
+                        <Text>Loading...</Text>
+                    ) : (
+                        <View>
+                            {playlists.length === 0 ? (
+                                <Text style={styles.emptyText}>No playlists yet. Create one!</Text>
+                            ) : (
+                                playlists.map((item) => (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={styles.playlistItem}
+                                        onPress={() => handlePlaylistPress(item.id)}
+                                    >
+                                        <View style={styles.playlistIcon}>
+                                            <Ionicons name="list" size={24} color="#007AFF" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.playlistTitle}>{item.title}</Text>
+                                            <Text style={styles.playlistDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                                    </TouchableOpacity>
+                                ))
+                            )}
+                        </View>
+                    )}
+                </View>
+            </ScrollView>
 
             <Modal visible={isCreating} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
@@ -127,7 +184,7 @@ export default function ParentDashboard() {
                                 <Text style={styles.buttonText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleCreatePlaylist} style={styles.saveButton}>
-                                <Text style={styles.buttonText}>Create</Text>
+                                <Text style={[styles.buttonText, { color: 'white' }]}>Create</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -139,9 +196,10 @@ export default function ParentDashboard() {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 20,
         flex: 1,
         backgroundColor: '#f5f5f5',
+        paddingTop: 20,
+        paddingHorizontal: 20,
     },
     headerRow: {
         flexDirection: 'row',
@@ -150,12 +208,13 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     header: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
+        color: '#333',
     },
     createButton: {
         backgroundColor: '#007AFF',
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 16,
         borderRadius: 20,
     },
@@ -163,30 +222,85 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: 'bold',
     },
+    section: {
+        marginBottom: 30,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 15,
+        color: '#444',
+    },
     emptyText: {
         textAlign: 'center',
-        marginTop: 50,
+        marginTop: 20,
         color: '#888',
     },
-    playlistItem: {
+    emptySubText: {
+        fontSize: 14,
+        color: '#999',
+        fontStyle: 'italic',
+    },
+    horizontalScroll: {
+        flexDirection: 'row',
+    },
+    likedCard: {
         backgroundColor: 'white',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
+        width: 140,
+        padding: 10,
+        borderRadius: 12,
+        marginRight: 15,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
         elevation: 2,
     },
-    playlistTitle: {
-        fontSize: 18,
+    videoPreview: {
+        width: '100%',
+        height: 80,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    likedTitle: {
+        fontSize: 14,
         fontWeight: '600',
+        color: '#333',
+    },
+    playlistItem: {
+        backgroundColor: 'white',
+        padding: 15,
+        borderRadius: 12,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    playlistIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#e3f2fd',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+    },
+    playlistTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
     },
     playlistDate: {
-        color: '#666',
+        color: '#888',
         fontSize: 12,
-        marginTop: 4,
+        marginTop: 2,
     },
     // Modal Styles
     modalOverlay: {
@@ -234,6 +348,6 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         fontWeight: '600',
-        color: 'black', // Default override for white bg buttons, but handled for saveButton if needed
+        color: '#333',
     }
 });

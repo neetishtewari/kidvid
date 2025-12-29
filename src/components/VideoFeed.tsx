@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View, ViewToken } from 'react-native';
@@ -11,7 +12,7 @@ const { height: windowHeight, width: windowWidth } = Dimensions.get('window');
 export default function VideoFeed() {
     const [videos, setVideos] = useState<Video[]>([]);
     const [playingId, setPlayingId] = useState<string | null>(null);
-    // Initialize with window height as a fallback
+    const [likedVideoIds, setLikedVideoIds] = useState<Set<string>>(new Set());
     const [containerHeight, setContainerHeight] = useState(windowHeight);
 
     const insets = useSafeAreaInsets();
@@ -19,6 +20,7 @@ export default function VideoFeed() {
 
     useEffect(() => {
         fetchVideos();
+        fetchLikes();
     }, []);
 
     const fetchVideos = async () => {
@@ -35,6 +37,55 @@ export default function VideoFeed() {
         }
     };
 
+    const fetchLikes = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('likes')
+                .select('video_id');
+
+            if (error) throw error;
+
+            const ids = new Set(data?.map(l => l.video_id));
+            setLikedVideoIds(ids);
+        } catch (error) {
+            console.log('Error fetching likes', error);
+        }
+    };
+
+    const toggleLike = async (videoId: string) => {
+        const isLiked = likedVideoIds.has(videoId);
+
+        // Optimistic update
+        const newSet = new Set(likedVideoIds);
+        if (isLiked) {
+            newSet.delete(videoId);
+        } else {
+            newSet.add(videoId);
+        }
+        setLikedVideoIds(newSet);
+
+        try {
+            if (isLiked) {
+                // Unlike
+                const { error } = await supabase
+                    .from('likes')
+                    .delete()
+                    .eq('video_id', videoId);
+                if (error) throw error;
+            } else {
+                // Like
+                const { error } = await supabase
+                    .from('likes')
+                    .insert([{ video_id: videoId }]);
+                if (error) throw error;
+            }
+        } catch (error: any) {
+            Alert.alert("Error updating like", error.message);
+            // Revert on error
+            setLikedVideoIds(likedVideoIds);
+        }
+    };
+
     const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
         if (viewableItems.length > 0) {
             const visibleItem = viewableItems[0];
@@ -47,6 +98,7 @@ export default function VideoFeed() {
 
     const renderItem = ({ item }: { item: Video }) => {
         const isPlaying = item.id === playingId;
+        const isLiked = likedVideoIds.has(item.id);
 
         return (
             <View style={[styles.videoContainer, { height: containerHeight }]}>
@@ -63,6 +115,19 @@ export default function VideoFeed() {
                             rel: false,
                         }}
                     />
+
+                    {/* Overlay Controls */}
+                    <View style={styles.rightControls}>
+                        <TouchableOpacity onPress={() => toggleLike(item.id)} style={styles.actionButton}>
+                            <Ionicons
+                                name={isLiked ? "heart" : "heart-outline"}
+                                size={40}
+                                color={isLiked ? "#ff3b30" : "white"}
+                            />
+                            <Text style={styles.actionText}>{isLiked ? "Liked" : "Like"}</Text>
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={styles.metaContainer}>
                         <Text style={styles.videoTitle}>{item.title || "Untitled Video"}</Text>
                     </View>
@@ -132,14 +197,39 @@ const styles = StyleSheet.create({
     playerWrapper: {
         width: '100%',
     },
+    rightControls: {
+        position: 'absolute',
+        right: 15,
+        bottom: 100,
+        alignItems: 'center',
+        zIndex: 10,
+    },
+    actionButton: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    actionText: {
+        color: 'white',
+        fontSize: 12,
+        marginTop: 5,
+        fontWeight: '600',
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10
+    },
     metaContainer: {
-        padding: 20,
+        position: 'absolute',
+        bottom: 40,
+        left: 20,
+        right: 80, // Leave room for right controls
     },
     videoTitle: {
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
-        textAlign: 'center',
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10
     },
     exitButton: {
         position: 'absolute',
