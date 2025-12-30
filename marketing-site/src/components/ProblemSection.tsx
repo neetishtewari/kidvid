@@ -5,27 +5,29 @@ import './Section.css';
 export default function ProblemSection() {
     const cards = [
         { icon: <Clock size={32} />, title: "Hours Lost", desc: "Average child spends 4+ hours on screens daily." },
-        { icon: <Brain size={32} />, title: "Brain Drain", desc: "Short-form algo-feeds reduce attention span." },
-        { icon: <AlertTriangle size={32} />, title: "Unsafe Content", desc: "One click away from inappropriate videos." }
+        { icon: <Brain size={32} />, title: "Brain Drain", desc: "Mindless scrolling algorithms reduce attention span." },
+        { icon: <AlertTriangle size={32} />, title: "Unsafe Dangers", desc: "One click away from inappropriate content." }
     ];
 
     return (
         <section className="section-container problem-bg">
-            <div className="section-content">
-                <motion.h2
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    className="section-title"
-                >
-                    The <span className="text-danger">Dopamine Trap</span>
-                </motion.h2>
-                <p className="section-subtitle">
-                    Existing platforms are built to addict, not to educate.
-                    The algorithm wants your child’s time. You want their growth.
-                </p>
+            <div className="container">
+                <div className="section-header">
+                    <motion.h2
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        className="section-title"
+                    >
+                        The Screen Time <span className="highlight-coral">Trap</span>
+                    </motion.h2>
+                    <p className="section-subtitle">
+                        Standard video apps are built to addiction, not education.
+                        They want your child's time. You want their growth.
+                    </p>
+                </div>
 
-                <div className="cards-grid">
+                <div className="features-grid">
                     {cards.map((card, index) => (
                         <motion.div
                             key={index}

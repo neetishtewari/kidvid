@@ -1,116 +1,132 @@
 .section-container {
-    padding: 6rem 5%;
-    display: flex;
-    justify-content: center;
+    padding: 80px 0;
 }
 
-.section-content {
-    max-width: 1000px;
-    width: 100%;
+.section-header {
     text-align: center;
+    max-width: 800px;
+    margin: 0 auto 60px;
 }
 
 .section-title {
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
 }
 
 .section-subtitle {
-    font-size: 1.2rem;
-    color: #888;
-    max-width: 600px;
-    margin: 0 auto 4rem auto;
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
 }
 
-.text-danger {
-    color: #ff4757;
+.highlight-coral {
+    color: var(--color-accent-coral);
+    position: relative;
+    display: inline-block;
 }
 
-.text-accent {
-    color: var(--accent-color);
+.highlight-teal {
+    color: var(--color-accent-teal);
 }
 
-/* Problem Section Specifics */
+/* Problem Section */
 .problem-bg {
-    background: #111;
+    background-color: white;
 }
 
-.cards-grid {
+.features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
 }
 
 .feature-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 2rem;
-    border-radius: 20px;
-    text-align: left;
-    transition: transform 0.3s;
+    background: #F8FAFC;
+    padding: 32px;
+    border-radius: var(--radius-lg);
+    transition: transform 0.3s ease;
+    border: 1px solid #E2E8F0;
 }
 
 .feature-card:hover {
-    transform: translateY(-5px);
-    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-8px);
+    background: white;
+    box-shadow: var(--shadow-lg);
 }
 
 .icon-box {
-    margin-bottom: 1.5rem;
-    padding: 12px;
-    border-radius: 12px;
-    width: fit-content;
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: 24px;
 }
 
 .icon-box.danger {
-    background: rgba(255, 71, 87, 0.1);
-    color: #ff4757;
+    background: rgba(255, 107, 107, 0.1);
+    color: var(--color-accent-coral);
 }
 
 .feature-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    margin-bottom: 12px;
 }
 
 .feature-card p {
-    font-size: 1rem;
-    color: #aaa;
+    color: var(--text-secondary);
+    line-height: 1.5;
 }
 
-/* Solution Section Specifics */
+/* Solution Section */
 .solution-bg {
-    background: linear-gradient(to bottom, #0a0a0a, #1a0b2e);
+    background: #F1F5F9;
 }
 
-.features-list {
+.solution-grid {
     display: flex;
-    flex-direction: column;
-    gap: 3rem;
-    align-items: center;
-}
-
-.feature-row {
-    background: rgba(0, 243, 255, 0.05);
-    border: 1px solid rgba(0, 243, 255, 0.1);
-    padding: 3rem;
-    border-radius: 30px;
-    width: 100%;
-    max-width: 800px;
-}
-
-.feature-text h3 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 24px;
     justify-content: center;
 }
 
-.inline-icon {
-    color: var(--accent-color);
+.solution-card {
+    background: white;
+    padding: 32px;
+    border-radius: var(--radius-lg);
+    width: 350px;
+    flex-grow: 1;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #E2E8F0;
+}
+
+.icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(78, 205, 196, 0.15);
+    color: var(--color-accent-teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.solution-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 10px;
+}
+
+.solution-card p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Footer (Shared styles often) */
+.footer-container {
+    background: var(--color-primary);
+    color: white;
+    padding: 60px 0;
+    text-align: center;
 }
