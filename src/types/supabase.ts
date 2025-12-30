@@ -15,3 +15,14 @@ export type Video = {
     title: string | null;
     duration_seconds: number | null;
 };
+
+export type Question = {
+    id: string;
+    created_at: string;
+    question_text: string;
+    options: string[];
+    correct_answer_index: number;
+    category: string | null;
+    difficulty: string | null;
+    video_id?: string | null; // Optional link to a specific video
+};
